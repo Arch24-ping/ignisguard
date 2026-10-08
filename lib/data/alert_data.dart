@@ -27,53 +27,66 @@ class AlertItem {
 class AlertData {
   AlertData._();
 
+  static String _clock(DateTime d) {
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    return '$h:$m ${d.hour >= 12 ? 'PM' : 'AM'}';
+  }
+
+  /// Demo alerts only. The screen shows these only while demo mode is on.
   /// Returns a fresh list each time so the screen can change it.
-  static List<AlertItem> initial() => [
-    AlertItem(
-      severity: AlertSeverity.critical,
-      title: 'Smoke detected — Kitchen',
-      message: '0.48 ppm smoke threshold exceeded (Safe max: 0.15 ppm)',
-      time: '10:24 AM',
-      tag: 'Smoke Critical',
-      trailing: 'Telemetry',
-      icon: Icons.cloud_outlined,
-      actionRequired: true,
-    ),
-    AlertItem(
-      severity: AlertSeverity.warning,
-      title: 'Rapid Temp Rise (+8°F in 2m)',
-      message: 'Kitchen North Zone ambient thermal gradient spike',
-      time: '10:22 AM',
-      tag: 'Thermal Warning',
-      trailing: 'Zone 1 Cooktop',
-      icon: Icons.thermostat,
-    ),
-    AlertItem(
-      severity: AlertSeverity.warning,
-      title: 'High Humidity (Steam) — Kitchen',
-      message: 'Humidity reached 68% while cooking, within steam tolerance',
-      time: '10:05 AM',
-      tag: 'Humidity Warning',
-      trailing: 'Zone 1 Kitchen',
-      icon: Icons.water_drop_outlined,
-    ),
-    AlertItem(
-      severity: AlertSeverity.system,
-      title: 'Sprinkler Self-Test Completed',
-      message: 'All 6 micro-valves reported nominal backpressure',
-      time: '08:30 AM',
-      tag: 'Routine Diagnostic',
-      trailing: 'System Verified',
-      icon: Icons.shower_outlined,
-    ),
-    AlertItem(
-      severity: AlertSeverity.system,
-      title: 'Air Quality Normalized — Living Room',
-      message: 'PM2.5 returned to optimal baseline (12 µg/m³)',
-      time: 'Yest. 6:15 PM',
-      tag: 'Auto-Resolved',
-      trailing: 'Duration: 18m',
-      icon: Icons.air,
-    ),
-  ];
+  static List<AlertItem> initial() {
+    final now = DateTime.now();
+    String ago(int minutes) =>
+        _clock(now.subtract(Duration(minutes: minutes)));
+
+    return [
+      AlertItem(
+        severity: AlertSeverity.critical,
+        title: 'Smoke detected — Kitchen',
+        message: '0.48 ppm smoke threshold exceeded (Safe max: 0.15 ppm)',
+        time: ago(14),
+        tag: 'Smoke Critical',
+        trailing: 'Telemetry',
+        icon: Icons.cloud_outlined,
+        actionRequired: true,
+      ),
+      AlertItem(
+        severity: AlertSeverity.warning,
+        title: 'Rapid Temp Rise (+8°F in 2m)',
+        message: 'Kitchen ambient thermal gradient spike',
+        time: ago(16),
+        tag: 'Thermal Warning',
+        trailing: 'Kitchen',
+        icon: Icons.thermostat,
+      ),
+      AlertItem(
+        severity: AlertSeverity.warning,
+        title: 'High Humidity (Steam) — Kitchen',
+        message: 'Humidity reached 68% while cooking, within steam tolerance',
+        time: ago(34),
+        tag: 'Humidity Warning',
+        trailing: 'Kitchen',
+        icon: Icons.water_drop_outlined,
+      ),
+      AlertItem(
+        severity: AlertSeverity.system,
+        title: 'Sprinkler Self-Test Completed',
+        message: 'Example of a routine diagnostic entry',
+        time: ago(95),
+        tag: 'Routine Diagnostic',
+        trailing: 'Simulated',
+        icon: Icons.shower_outlined,
+      ),
+      AlertItem(
+        severity: AlertSeverity.system,
+        title: 'Air Quality Normalized — Living Room',
+        message: 'PM2.5 returned to optimal baseline (12 µg/m³)',
+        time: 'Yest. ${_clock(now.subtract(const Duration(hours: 20)))}',
+        tag: 'Auto-Resolved',
+        trailing: 'Duration: 18m',
+        icon: Icons.air,
+      ),
+    ];
+  }
 }

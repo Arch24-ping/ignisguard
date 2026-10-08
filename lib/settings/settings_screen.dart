@@ -78,9 +78,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Text(d.name, style: AppTheme.heading(size: 22)),
             const SizedBox(height: 14),
-            _kv('Status', d.online ? 'Online' : 'Offline'),
-            _kv('Battery', '${d.battery}%'),
-            _kv('Model', 'IG-930 All-in-One Detector'),
+            _kv('Status', 'Awaiting sensor'),
+            if (d.battery >= 0) _kv('Battery', '${d.battery}%'),
             const SizedBox(height: 16),
             OutlinedButton(
               onPressed: () {
@@ -113,11 +112,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               DeviceInfo(
                 name: nickname,
                 icon: Icons.sensors_rounded,
-                battery: 100,
+                battery: -1,
               ),
             );
             Navigator.of(context).pop();
-            _snack('$nickname paired');
+            _snack('$nickname added. Not connected yet');
           },
         ),
       ),
@@ -167,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _sectionHeader(
                 Icons.contact_phone_outlined,
                 'Emergency Contacts & Dispatch',
-                '${_store.contacts.length} Active',
+                '${_store.contacts.length} saved',
                 tagColor: AppColors.primary,
               ),
               const SizedBox(height: 10),
@@ -343,7 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _toggleRow(
               icon: Icons.thermostat,
               title: 'Thermal Gradient Alert',
-              subtitle: 'Triggers on rapid spike (+8°F in ≤ 2 min)',
+              subtitle: 'Not active unti a sensor is connected',
               value: _store.thermalAlert,
               onChanged: _store.setThermalAlert,
             ),
@@ -424,16 +423,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _toggleRow(
               title: 'Push Notifications',
-              subtitle: 'Real-time status changes and air quality warnings',
+              subtitle: 'Not active unti a sensor is connected',
               value: _store.push,
               onChanged: _store.setPush,
             ),
             const SizedBox(height: 16),
             _toggleRow(
               title: 'Critical Sound Bypass',
-              subtitle:
-                  "Overrides 'Do Not Disturb' and silent mode with "
-                  'full decibel alarm during confirmed smoke hazard.',
+              subtitle: 'Not active unti a sensor is connected',
               value: _store.soundBypass,
               onChanged: _store.setSoundBypass,
               badge: Container(
@@ -455,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _toggleRow(
               title: 'SMS Emergency Broadcast',
-              subtitle: 'Instant text dispatch to registered family phones',
+              subtitle: 'Not active unti a sensor is connected',
               value: _store.sms,
               onChanged: _store.setSms,
             ),
@@ -675,6 +672,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            if (devices.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'No sensors paired yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
             for (var i = 0; i < devices.length; i++) _deviceTile(i),
             const SizedBox(height: 2),
             ElevatedButton.icon(
@@ -725,35 +734,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.circle,
                           size: 8,
-                          color: d.online
-                              ? AppColors.success
-                              : AppColors.textSecondary,
+                          color: AppColors.textSecondary,
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          d.online ? 'Online' : 'Offline',
-                          style: const TextStyle(
+                        const Text(
+                          'Awaiting sensor',
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.battery_5_bar,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${d.battery}%',
-                          style: const TextStyle(
-                            fontSize: 11,
+                        if (d.battery >= 0) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.battery_5_bar,
+                            size: 12,
                             color: AppColors.textSecondary,
                           ),
-                        ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${d.battery}%',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

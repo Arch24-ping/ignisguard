@@ -48,15 +48,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  bool _saving = false;
   Future<void> _savePdf() async {
+    if (_saving) return;
+    setState(() => _saving = true);
     try {
       final bytes = await buildHistoryPdf(_data);
       await Printing.sharePdf(bytes: bytes, filename: 'ignisguard-summary.pdf');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not create the PDF: $e')));
+    } catch (e, st) {
+      debugPrint('PDF export failed: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not create the PDF: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -97,7 +102,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               _metricCard(
                 icon: Icons.cloud_outlined,
                 title: 'Smoke & Air Quality',
-                badge: 'Safe & Clear',
+                badge: d.smoke.max >= 0.15 ? 'Spike recorded' : 'Safe & Clear',
                 big: d.smoke.avg.toStringAsFixed(2),
                 unit: 'ppm avg',
                 detail: '• Normal is under 0.15 ppm',
@@ -111,20 +116,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   xLabels: d.xLabels,
                   spikeIndex: d.spikeIndex,
                   spikeLabel: d.hasEvent
-                      ? 'Dinner Cooking (Oct 24, safe)'
+                      ? 'Simulated spike (${d.eventDay})'
                       : null,
                 ),
                 note: d.hasEvent
-                    ? 'No hazardous fire smoke detected. Only 1 brief cooking '
-                          'spike was recorded and cleared safely.'
-                    : 'No smoke detected. Air quality stayed clear the whole '
-                          'period.',
+                    ? 'One simulated smoke spike is shown to demonstrate how '
+                          'events appear.'
+                    : 'No smoke detected in this period.',
               ),
               const SizedBox(height: 14),
               _metricCard(
                 icon: Icons.thermostat,
                 title: 'Room Temperature',
-                badge: 'Comfortable',
+                badge: (d.temp.min >= 68 && d.temp.max <= 78)
+                    ? 'Comfortable'
+                    : 'Outside comfort zone',
                 big: '${d.temp.avg.round()}°F',
                 unit: 'average',
                 detail:
@@ -139,13 +145,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   xLabels: d.xLabels,
                   color: const Color(0xFFE0894F),
                 ),
-                note: 'Stable indoor climate. No sudden dangerous heat spikes.',
+                note: d.temp.max < 120
+                    ? 'Temperature stayed well below the 120°F alert level.'
+                    : 'Temperature reached the alert level.',
               ),
               const SizedBox(height: 14),
               _metricCard(
                 icon: Icons.water_drop_outlined,
                 title: 'Humidity Levels',
-                badge: 'Optimal',
+                badge: (d.humidity.avg >= 30 && d.humidity.avg <= 50)
+                    ? 'Optimal'
+                    : 'Outside range',
                 big: '${d.humidity.avg.round()}%',
                 unit: 'average',
                 detail: '• Ideal range is 30% - 50%',
@@ -218,7 +228,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(width: 6),
                 const Expanded(
                   child: Text(
-                    'Kitchen Detector  •  Zone 1',
+                    'Demo sensor  •  simulated data',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                   ),
@@ -230,7 +240,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         const SizedBox(width: 8),
         InkWell(
           customBorder: const CircleBorder(),
-          onTap: () => _savePdf,
+          onTap: _savePdf,
           child: Container(
             width: 38,
             height: 38,
@@ -506,12 +516,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cooking Steam / Searing',
+                            'Simulated smoke spike',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -519,7 +529,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Thu Oct 24  •  10:24 AM  •  Kitchen',
+                            'd.eventWhen ??',
                             style: TextStyle(
                               fontSize: 10,
                               color: AppColors.textSecondary,
@@ -538,7 +548,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'Harmless',
+                        'Demo',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -556,8 +566,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
-                    'Cleared automatically after 6 minutes. Normal kitchen '
-                    'cooking activity, no sprinkler needed.',
+                    'Example event for demonstration. Real events appear here'
+                    'once a sensor reports them.',
                     style: TextStyle(fontSize: 11, height: 1.35),
                   ),
                 ),
@@ -592,7 +602,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Kitchen Sensor is working perfectly',
+                  'Demo mode: no sensor connected',
                   style: AppTheme.heading(size: 18),
                 ),
               ),
@@ -600,13 +610,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Battery: 94% (Good for 2+ years)  •  Signal: Strong Wi-Fi',
+            'Battery and Signal: not reported (no sensor connected)',
             style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           const Text(
-            'Your kitchen detector is online, calibrated, and continuously '
-            'keeping watch. Monthly health diagnostic passed 100%.',
+            'Readings on this screen are simulated for demonstration. Real'
+            'diagnostics appear here once a sensor is pair',
             style: TextStyle(
               fontSize: 11,
               height: 1.4,
@@ -615,7 +625,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
-            onPressed: () => _savePdf,
+            onPressed: _saving ? null : _savePdf,
             icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
             label: const Text('Save Summary (PDF)'),
           ),

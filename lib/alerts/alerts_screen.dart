@@ -5,6 +5,7 @@ import '../data/alert_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/screen_header.dart';
+import '../data/sensor_link.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({
@@ -25,10 +26,26 @@ class _AlertsScreenState extends State<AlertsScreen> {
   AlertSeverity? _filter; // null means "All Alerts"
   bool _snoozed = false;
 
+  bool _wasDemo = SensorLink.instance.isDemo;
+  List<AlertItem> get _active =>
+      SensorLink.instance.isDemo ? _alerts : const <AlertItem>[];
+
   @override
   void initState() {
     super.initState();
+    SensorLink.instance.addListener(_onLink);
     _loadReviewed();
+  }
+
+  @override
+  void dispose() {
+    SensorLink.instance.removeListener(_onLink);
+    super.dispose();
+  }
+
+  void _onLink() {
+    final demo = SensorLink.instance.isDemo;
+    if (demo != _wasDemo) setState(() => _wasDemo = demo);
   }
 
   Future<void> _loadReviewed() async {
@@ -50,15 +67,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
   }
 
-  int _count(AlertSeverity s) => _alerts.where((a) => a.severity == s).length;
+  int _count(AlertSeverity s) => _active.where((a) => a.severity == s).length;
 
   bool get _showBanner =>
       !_snoozed &&
-      _alerts.any(
+      _active.any(
         (a) => a.severity == AlertSeverity.critical && a.actionRequired,
       );
 
   void _markReviewed() {
+    if (_active.isEmpty) return;
     setState(() {
       for (final a in _alerts) {
         a.actionRequired = false;
@@ -83,8 +101,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   @override
   Widget build(BuildContext context) {
     final visible = _filter == null
-        ? _alerts
-        : _alerts.where((a) => a.severity == _filter).toList();
+        ? _active
+        : _active.where((a) => a.severity == _filter).toList();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -122,10 +140,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Real-time thermal sensing & sensor telemetry status',
+              'Alerts from your IgnisGuard sensor appear here',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
+            if (SensorLink.instance.isDemo) ...[
+              _demoTag(),
+              const SizedBox(height: 12),
+            ],
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -150,23 +172,48 @@ class _AlertsScreenState extends State<AlertsScreen> {
             const SizedBox(height: 16),
             if (_showBanner) ...[_criticalBanner(), const SizedBox(height: 16)],
             if (visible.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
                 child: Center(
                   child: Text(
-                    'No alerts in this category',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    SensorLink.instance.isDemo
+                        ? 'No alerts in this category'
+                        : 'No alerts yet. Alerts from your sensor will appear here.'
+                              ' Turn on demo from Home to see examples.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
               )
             else
               for (final a in visible) _alertTile(a),
             const SizedBox(height: 8),
-            _monitorCard(),
-            const SizedBox(height: 14),
             _safetyCard(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _demoTag() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.science_outlined, size: 16, color: AppColors.primary),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'DEMO DATA • These alerts are simulated, not from a real sensor',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -249,7 +296,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ),
               const SizedBox(width: 10),
               const Text(
-                '14 mins ago',
+                'Demo alert',
                 style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
@@ -261,7 +308,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Zone 1: Kitchen Primary Cooktop Hub',
+            'Simulated for demonstration',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -439,64 +486,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _monitorCard() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFEBD9C4), Color(0xFFB98B66)],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'KITCHEN MONITOR STATUS',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Zone 1 Optical Chamber',
-                  style: AppTheme.heading(size: 17),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Visual telemetry confirmed clear exhaust…',
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.blur_on, color: AppColors.primary),
         ],
       ),
     );

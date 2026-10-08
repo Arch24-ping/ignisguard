@@ -45,7 +45,7 @@ class DeviceInfo {
     required this.name,
     required this.icon,
     required this.battery,
-    this.online = true,
+    this.online = false,
   });
 
   final String name;
@@ -75,8 +75,8 @@ class DeviceInfo {
     return DeviceInfo(
       name: (j['name'] ?? '') as String,
       icon: knownIcons[i >= 0 && i < knownIcons.length ? i : 0],
-      battery: (j['battery'] ?? 100) as int,
-      online: (j['online'] ?? true) as bool,
+      battery: (j['battery'] ?? -1) as int,
+      online: (j['online'] ?? false) as bool,
     );
   }
 }
@@ -88,36 +88,14 @@ class SettingsStore extends ChangeNotifier {
   SharedPreferences? _prefs;
 
   Sensitivity _sensitivity = Sensitivity.standard;
-  bool _thermalAlert = true;
-  bool _push = true;
-  bool _soundBypass = true;
-  bool _sms = true;
+  bool _thermalAlert = false;
+  bool _push = false;
+  bool _soundBypass = false;
+  bool _sms = false;
 
-  final List<Contact> _contacts = [
-    const Contact(
-      name: 'Sarah Jenkins',
-      relation: 'Spouse',
-      phone: '+263 700 000 000',
-    ),
-    const Contact(
-      name: 'Michael Jenkins',
-      relation: 'Son',
-      phone: '+263 777 777 777',
-    ),
-  ];
+  final List<Contact> _contacts = [];
 
-  final List<DeviceInfo> _devices = [
-    const DeviceInfo(
-      name: 'Kitchen Smoke Detector #01',
-      icon: Icons.sensors_rounded,
-      battery: 94,
-    ),
-    const DeviceInfo(
-      name: 'Server Room Detector',
-      icon: Icons.dns_outlined,
-      battery: 88,
-    ),
-  ];
+  final List<DeviceInfo> _devices = [];
 
   Sensitivity get sensitivity => _sensitivity;
   bool get thermalAlert => _thermalAlert;

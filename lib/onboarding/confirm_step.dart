@@ -16,28 +16,6 @@ class ConfirmStep extends StatelessWidget {
   final String nickname;
   final VoidCallback onEnter;
 
-  Widget _feature(IconData icon, String label) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
   Widget _row(String label, String value, {Color? valueColor}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 8),
     child: Row(
@@ -92,17 +70,21 @@ class ConfirmStep extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
-                    color: AppColors.success,
+                    color: AppColors.textSecondary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check, size: 16, color: Colors.white),
+                  child: const Icon(
+                    Icons.more_horiz,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            'HARDWARE PAIRED & SYNCHRONIZED • ${zone.toUpperCase()} DETECTOR #01',
+            'SETUP SAVED • SENSOR NOT YET CONNECTED',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 9,
@@ -113,14 +95,14 @@ class ConfirmStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'All Sensors Online & Verified',
+            'Setup Complete',
             textAlign: TextAlign.center,
             style: AppTheme.heading(size: 30),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your all-in-one IgnisGuard smart detector is fully calibrated '
-            'and actively safeguarding against fire and smoke in the $zone.',
+            'Your Wi-Fi and zone details are saved on this phone. Live readings '
+            'and alerts appear once a real sensor connects.',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 13,
@@ -147,17 +129,10 @@ class ConfirmStep extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'IgnisGuard All-in-One Detector',
+                              'IgnisGuard Sensor',
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              'Model IG-930 • $zone Unit #01',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -165,45 +140,19 @@ class ConfirmStep extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Integrated multi-hazard protection combining flame '
-                    'flicker (IR/UV), dual-optic smoke detection, thermal '
-                    'gradient monitoring, and ambient humidity tracking.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      height: 1.4,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _feature(
-                        Icons.local_fire_department_outlined,
-                        'Flame & Optical',
-                      ),
-                      const SizedBox(width: 8),
-                      _feature(Icons.cloud_outlined, 'Dual-Optic Smoke'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _feature(Icons.thermostat, 'Rapid Thermal'),
-                      const SizedBox(width: 8),
-                      _feature(Icons.water_drop_outlined, 'Ambient Moisture'),
-                    ],
-                  ),
                   const Divider(height: 28, color: AppColors.border),
-                  _row('Assigned Zone', '$zone • Zone 1'),
+                  _row('Assigned Zone', 'zone'),
                   _row('Device Name', nickname),
                   _row(
                     'Sprinkler Interlock',
-                    'Sprinkler Valve Ready (Zone 1)',
+                    'Not connected',
                     valueColor: AppColors.success,
                   ),
-                  _row('Battery & Signal', '96% • -52 dBm'),
+                  _row(
+                    'Battery & Signal',
+                    'Shown once the sensor reports in',
+                    valueColor: AppColors.textSecondary,
+                  ),
                 ],
               ),
             ),
@@ -224,12 +173,12 @@ class ConfirmStep extends StatelessWidget {
           TextButton.icon(
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Test burst sent to siren (simulated)'),
+                content: Text('No sensor connected. Nothing was sent'),
               ),
             ),
             icon: const Icon(Icons.volume_up_outlined, size: 16),
             label: const Text(
-              'Test Siren & Flame Optical Sensor (3-Sec Burst)',
+              'Test Siren (needs a connected sensor)',
               style: TextStyle(fontSize: 11),
             ),
           ),

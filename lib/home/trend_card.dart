@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/sensor_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
+import '../data/sensor_link.dart';
 
 class TrendCard extends StatefulWidget {
   const TrendCard({super.key, required this.onHistory});
@@ -17,7 +18,8 @@ class _TrendCardState extends State<TrendCard> {
 
   @override
   Widget build(BuildContext context) {
-    final week = SensorData.week;
+    final week = SensorLink.instance.week;
+    if (week.isEmpty) return const SizedBox.shrink();
     final day = week[_selected];
 
     return Card(
@@ -117,13 +119,13 @@ class _TrendCardState extends State<TrendCard> {
                       _legend(
                         AppColors.primary,
                         'Ambient Temp (avg '
-                        '${SensorData.avgTemp.toStringAsFixed(1)}°)',
+                        '${SensorLink.instance.avgTemp.toStringAsFixed(1)}°)',
                         dashed: false,
                       ),
                       _legend(
                         AppColors.textSecondary,
                         'Aerosols (avg '
-                        '${SensorData.avgSmoke.toStringAsFixed(2)})',
+                        '${SensorLink.instance.avgSmoke.toStringAsFixed(2)})',
                         dashed: true,
                       ),
                     ],

@@ -121,7 +121,7 @@ class _SprinklerCardState extends State<SprinklerCard>
                   Text('System self-test', style: TextStyle(fontSize: 12)),
                   Spacer(),
                   Text(
-                    'Today, 08:30 AM',
+                    'Simulated',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ],

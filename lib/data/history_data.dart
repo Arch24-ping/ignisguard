@@ -24,6 +24,7 @@ class HistoryData {
     required this.temp,
     required this.humidity,
     required this.spikeIndex,
+    required this.eventAt,
   });
 
   final HistoryPeriod period;
@@ -35,8 +36,21 @@ class HistoryData {
   final HistorySeries temp;
   final HistorySeries humidity;
   final int? spikeIndex;
+  final DateTime? eventAt;
 
   bool get hasEvent => spikeIndex != null;
+
+  String? get eventDay => eventAt == null ? null : _fmt(eventAt!);
+
+  String? get eventWhen {
+    final d = eventAt;
+    if (d == null) return null;
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final m = d.minute.toString().padLeft(2, '0');
+    final ap = d.hour >= 12 ? 'PM' : 'AM';
+    return '${days[d.weekday - 1]} ${_fmt(d)}  •  $h:$m $ap';
+  }
 
   /// Share of readings with smoke under the 0.15 ppm safe limit.
   int get safePercent {
@@ -62,6 +76,9 @@ class HistoryData {
   static String _fmt(DateTime d) => '${_months[d.month - 1]} ${d.day}';
 
   static HistoryData build(HistoryPeriod period, {DateTimeRange? range}) {
+    final now = DateTime.now();
+    DateTime start = now;
+    DateTime end = now;
     int days;
     int perDay;
     String past;
@@ -76,6 +93,7 @@ class HistoryData {
       word = '24 hours';
       eventsTitle = 'Events Today';
       labels = const ['12 AM', '6 AM', '12 PM', '6 PM', 'Now'];
+      start = now.subtract(const Duration(hours: 24));
     } else if (period == HistoryPeriod.week) {
       days = 7;
       perDay = 12;
@@ -83,27 +101,27 @@ class HistoryData {
       word = 'week';
       eventsTitle = 'Events this Week';
       const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final today = DateTime.now();
       labels = List.generate(7, (i) {
-        final d = today.subtract(Duration(days: 6 - i));
+        final d = now.subtract(Duration(days: 6 - i));
         return names[d.weekday - 1];
       });
+      start = now.subtract(const Duration(days: 7));
     } else if (period == HistoryPeriod.month) {
       days = 30;
       perDay = 4;
       past = 'Past 30 Days';
       word = 'month';
       eventsTitle = 'Events this Month';
-      final today = DateTime.now();
+      
       labels = [
-        _fmt(today.subtract(const Duration(days: 29))),
+        _fmt(now.subtract(const Duration(days: 29))),
         'Week 1',
         'Week 2',
         'Week 3',
-        _fmt(today),
+        _fmt(now),
       ];
+      start = now.subtract(const Duration(days: 30));
     } else {
-      final now = DateTime.now();
       final r =
           range ??
           DateTimeRange(
@@ -117,6 +135,8 @@ class HistoryData {
       eventsTitle = 'Events in this Period';
       final mid = r.start.add(Duration(days: days ~/ 2));
       labels = [_fmt(r.start), _fmt(mid), _fmt(r.end)];
+      start = r.start;
+      end = r.end;
     }
 
     final n = math.max(24, days * perDay);
@@ -127,6 +147,12 @@ class HistoryData {
       spike = (n * 0.8).round();
     } else if (period == HistoryPeriod.week) {
       spike = ((n - 1) * 0.5).round();
+    }
+
+    DateTime? eventAt;
+    if (spike != null) {
+      final spanMin = end.difference(start).inMinutes;
+      eventAt = start.add(Duration(minutes: (spanMin * spike / n).round()));
     }
 
     final rng = math.Random(days * 31 + period.index);
@@ -163,6 +189,7 @@ class HistoryData {
       temp: HistorySeries(temp),
       humidity: HistorySeries(humidity),
       spikeIndex: spike,
+      eventAt: eventAt,
     );
   }
 }

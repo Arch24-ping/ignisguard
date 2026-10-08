@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../history/history_screen.dart';
+import '../data/profile_store.dart';
 import '../data/sensor_data.dart';
+import '../data/sensor_link.dart';
+import '../history/history_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'sprinkler_card.dart';
@@ -25,82 +27,99 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header(),
-            const SizedBox(height: 16),
-            _sensorSelector(),
-            const SizedBox(height: 14),
-            _statusBanner(),
-            const SizedBox(height: 14),
-            Row(
+      child: ListenableBuilder(
+        listenable: SensorLink.instance,
+        builder: (context, _) {
+          final link = SensorLink.instance;
+          final r = link.reading;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Temp',
-                    icon: Icons.thermostat,
-                    value: SensorData.tempF.toStringAsFixed(0),
-                    unit: '°F',
-                    caption:
-                        'Normal • Avg '
-                        '${SensorData.avgTemp.toStringAsFixed(0)}°',
+                _header(),
+                const SizedBox(height: 16),
+                if (r == null)
+                  _noSensorCard(link)
+                else ...[
+                  _demoBanner(link),
+                  const SizedBox(height: 12),
+                  _sensorSelector(),
+                  const SizedBox(height: 14),
+                  _statusBanner(link, r),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MetricCard(
+                          label: 'Temp',
+                          icon: Icons.thermostat,
+                          value: r.tempF.toStringAsFixed(0),
+                          unit: '°F',
+                          caption:
+                              '${r.tempF >= SensorLink.tempLimitF ? 'High' : 'Normal'}'
+                              ' • Avg ${link.avgTemp.toStringAsFixed(0)}°',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MetricCard(
+                          label: 'Smoke',
+                          icon: Icons.cloud_outlined,
+                          value: r.smokePpm.toStringAsFixed(2),
+                          unit: 'ppm',
+                          caption: r.smokePpm >= SensorLink.smokeLimit
+                              ? 'Elevated (≥ 0.15)'
+                              : 'Normal (< 0.15)',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MetricCard(
+                          label: 'Humidity',
+                          icon: Icons.water_drop_outlined,
+                          value: r.humidity.toStringAsFixed(0),
+                          unit: '%',
+                          caption: (r.humidity >= 40 && r.humidity <= 50)
+                              ? 'Optimal 40–50%'
+                              : 'Outside 40–50%',
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Smoke',
-                    icon: Icons.cloud_outlined,
-                    value: SensorData.smokePpm.toStringAsFixed(2),
-                    unit: 'ppm',
-                    caption: 'Normal (< 0.15)',
+                  const SizedBox(height: 14),
+                  TrendCard(
+                    onHistory: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MetricCard(
-                    label: 'Humidity',
-                    icon: Icons.water_drop_outlined,
-                    value: '${SensorData.humidity}',
-                    unit: '%',
-                    caption: 'Optimal 40–50%',
+                  const SizedBox(height: 14),
+                  const SprinklerCard(),
+                  const SizedBox(height: 14),
+                  _spatialView(),
+                ],
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: widget.onOpenEducation,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Read in Education Hub',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward, size: 14),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            
-            TrendCard(
-              onHistory: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const HistoryScreen())),
-            ),
-            const SizedBox(height: 14),
-            const SprinklerCard(),
-            const SizedBox(height: 14),
-            _spatialView(),
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton(
-                onPressed: widget.onOpenEducation,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Read in Education Hub',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward, size: 14),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -138,6 +157,80 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _noSensorCard(SensorLink link) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.sensors_off_outlined,
+            size: 34,
+            color: AppColors.primary,
+          ),
+          const SizedBox(height: 12),
+          Text('No sensor connected', style: AppTheme.heading(size: 22)),
+          const SizedBox(height: 6),
+          const Text(
+            'Live temperature, smoke and humidity readings appear here once '
+            'an IgnisGuard sensor is paired. Until then you can explore the '
+            'app with simulated data.',
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: link.startDemo,
+              child: const Text('Try demo mode'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _demoBanner(SensorLink link) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.science_outlined,
+            size: 16,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'DEMO DATA • Simulated readings, no sensor connected',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            ),
+          ),
+          TextButton(
+            onPressed: link.stopDemo,
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            child: const Text('Exit', style: TextStyle(fontSize: 11)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -203,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _statusBanner() {
+  Widget _statusBanner(SensorLink link, SensorReading r) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -216,13 +309,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'No thermal anomalies detected',
-                  style: AppTheme.heading(size: 20),
-                ),
+                Text(link.statusTitle, style: AppTheme.heading(size: 20)),
                 const SizedBox(height: 6),
                 const Text(
-                  'Dual-optic optical sensor running at optimum calibration.',
+                  'Based on simulated demo readings.',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -240,14 +330,14 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Positioned.fill(
                   child: CircularProgressIndicator(
-                    value: SensorData.health / 100,
+                    value: r.health / 100,
                     strokeWidth: 5,
                     color: AppColors.primary,
                     backgroundColor: AppColors.border,
                   ),
                 ),
                 Text(
-                  '${SensorData.health}%',
+                  '${r.health}%',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -262,6 +352,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _spatialView() {
+    final location = ProfileStore.instance.location;
     return Container(
       height: 130,
       width: double.infinity,
@@ -288,14 +379,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Kitchen Area • West Loft',
-            style: AppTheme.heading(size: 20, color: Colors.white),
-          ),
+          Text(_sensor, style: AppTheme.heading(size: 20, color: Colors.white)),
           const SizedBox(height: 2),
-          const Text(
-            'Connected to Zone A Main Supply',
-            style: TextStyle(fontSize: 11, color: Colors.white),
+          Text(
+            location.isEmpty ? 'Demo sensor' : location,
+            style: const TextStyle(fontSize: 11, color: Colors.white),
           ),
         ],
       ),
