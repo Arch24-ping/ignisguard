@@ -82,14 +82,26 @@ class HistoryData {
       past = 'Past 7 Days';
       word = 'week';
       eventsTitle = 'Events this Week';
-      labels = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final today = DateTime.now();
+      labels = List.generate(7, (i) {
+        final d = today.subtract(Duration(days: 6 - i));
+        return names[d.weekday - 1];
+      });
     } else if (period == HistoryPeriod.month) {
       days = 30;
       perDay = 4;
       past = 'Past 30 Days';
       word = 'month';
       eventsTitle = 'Events this Month';
-      labels = const ['Oct 1', 'Week 1', 'Week 2', 'Week 3', 'Oct 30'];
+      final today = DateTime.now();
+      labels = [
+        _fmt(today.subtract(const Duration(days: 29))),
+        'Week 1',
+        'Week 2',
+        'Week 3',
+        _fmt(today),
+      ];
     } else {
       final now = DateTime.now();
       final r =

@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:wifi_iot/wifi_iot.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'onboarding_widgets.dart';
+import 'wifi_scanner.dart';
 
-class _Network {
-  const _Network(this.name, this.note);
+class _Net {
+  const _Net(
+    this.name,
+    this.note, {
+    this.secured = true,
+    this.hidden = false,
+    this.enterprise = false,
+  });
   final String name;
   final String note;
+  final bool secured;
+  final bool hidden;
+  final bool enterprise;
 }
 
 class WifiStep extends StatefulWidget {
@@ -19,45 +30,217 @@ class WifiStep extends StatefulWidget {
 }
 
 class _WifiStepState extends State<WifiStep> {
-  static const _networks = [
-    _Network('Home_Network_5G', 'Recommended • Excellent Signal'),
-    _Network('Guest_Air_2.4G', 'Good Signal'),
-    _Network('Neighbor_Net_Ext', 'Weak Signal'),
-  ];
-
-  int _selected = 0;
+  List<_Net> _scanned = [];
+  final List<_Net> _manual = [];
+  String? _selected;
+  String? _problem;
+  bool _scanning = false;
   bool _obscure = true;
   bool _connecting = false;
   final _password = TextEditingController();
+  final _hidden = TextEditingController();
+
+  /// Manually entered networks first, then scan results without duplicates.
+  List<_Net> get _all {
+    final names = _manual.map((n) => n.name).toSet();
+    return [..._manual, ..._scanned.where((n) => !names.contains(n.name))];
+  }
+
+  _Net? get _current {
+    for (final n in _all) {
+      if (n.name == _selected) return n;
+    }
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scan();
+  }
 
   @override
   void dispose() {
     _password.dispose();
+    _hidden.dispose();
     super.dispose();
   }
 
+  Future<void> _scan() async {
+    if (_scanning) return;
+    setState(() {
+      _scanning = true;
+      _problem = null;
+    });
+
+    final result = await WifiScanner.scan();
+    if (!mounted) return;
+
+    final nets = <_Net>[];
+    for (var i = 0; i < result.networks.length; i++) {
+      final n = result.networks[i];
+      final label = n.enterprise
+          ? 'School/work network • not supported'
+          : (i == 0 && n.level >= -67)
+          ? 'Recommended • ${n.signalLabel}'
+          : n.signalLabel;
+      nets.add(
+        _Net(n.ssid, label, secured: n.secured, enterprise: n.enterprise),
+      );
+    }
+
+    setState(() {
+      _scanning = false;
+      _problem = result.problem;
+      _scanned = nets;
+      if (_current == null) {
+        final usable = _all.where((n) => !n.enterprise).toList();
+        _selected = usable.isEmpty ? null : usable.first.name;
+      }
+    });
+  }
+
+  void _select(String name) {
+    if (_selected != name) _password.clear();
+    setState(() => _selected = name);
+  }
+
+  Future<void> _addHidden() async {
+    _hidden.clear();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hidden network'),
+        content: TextField(
+          controller: _hidden,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Network name (SSID)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _hidden.text.trim()),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    setState(() {
+      _manual.removeWhere((n) => n.name == name);
+      _manual.insert(0, _Net(name, 'Entered manually', hidden: true));
+      _password.clear();
+      _selected = name;
+    });
+  }
+
+  //true = joined with that password, false = refect/timed out,
+  //null = this phone could not run the check.
+  Future<bool?> _verify(_Net net) async {
+    try {
+      final ok = await WiFiForIoTPlugin.connect(
+        net.name,
+        password: _password.text,
+        security: NetworkSecurity.WPA,
+        joinOnce: true,
+        isHidden: net.hidden,
+        timeoutInSeconds: 25,
+      );
+      debugPrint('VERIFY result for ${net.name}: $ok');
+      if (ok) await WiFiForIoTPlugin.disconnect();
+      return ok;
+    } catch (e) {
+      debugPrint('VERIFY error: $e');
+      return null;
+    }
+  }
+
   Future<void> _connect() async {
-    if (_password.text.trim().isEmpty) {
+    final net = _current;
+    if (net == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the Wi-Fi password to continue')),
+        const SnackBar(content: Text('Select a Wi-Fi network first')),
       );
       return;
     }
+
+    if (net.enterprise) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Networks that need a username (school or work WiFi) are not supported. Choose your home WiFi or a phone hotspot.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    debugPrint(
+      'CONNECT tapped: "${net.name}" secured=${net.secured}'
+      'hidden=${net.hidden} pwLen=${_password.text.length}',
+    );
+    if (net.secured) {
+      final pw = _password.text;
+      if (pw.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter the Wi-Fi password to continue')),
+        );
+        return;
+      }
+      final isHexKey = RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(pw);
+      if (pw.length < 8 || (pw.length > 63 && !isHexKey)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wi-Fi passwords are 8 to 63 characters long'),
+          ),
+        );
+        return;
+      }
+    }
     setState(() => _connecting = true);
+
+    if (net.secured) {
+      final ok = await _verify(net);
+      if (!mounted) return;
+      if (ok == false) {
+        setState(() => _connecting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not join "${net.name}". Check the password and try again.',
+            ),
+          ),
+        );
+        return;
+      }
+      if (ok == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'This phone could not verify the password, continuing without it.',
+            ),
+          ),
+        );
+      }
+    }
+
+    //Pairing the sensor itself is still simulated (no hardware yet).
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
     setState(() => _connecting = false);
-    widget.onContinue(_networks[_selected].name);
+    widget.onContinue(net.name);
   }
 
-  Widget _networkTile(int i) {
-    final n = _networks[i];
-    final selected = i == _selected;
+  Widget _networkTile(_Net n) {
+    final selected = n.name == _selected;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => setState(() => _selected = i),
+        onTap: () => _select(n.name),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -81,19 +264,24 @@ class _WifiStepState extends State<WifiStep> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          n.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            n.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        const Icon(
-                          Icons.lock_outline,
-                          size: 13,
-                          color: AppColors.textSecondary,
-                        ),
+                        if (n.secured) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.lock_outline,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -127,8 +315,36 @@ class _WifiStepState extends State<WifiStep> {
     );
   }
 
+  Widget _problemCard() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$_problem\nYou can still add your network with '
+              '"Connect to Hidden Network" below.',
+              style: const TextStyle(fontSize: 11, height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final networks = _all;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
@@ -158,20 +374,76 @@ class _WifiStepState extends State<WifiStep> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'SELECT HOME NETWORK',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                      color: AppColors.textSecondary,
-                    ),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'SELECT HOME NETWORK',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (_scanning)
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: _scan,
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.refresh_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Scan again',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 12),
-                  for (var i = 0; i < _networks.length; i++) _networkTile(i),
+                  if (_scanning && networks.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Center(
+                        child: Text(
+                          'Scanning for networks...',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  for (final n in networks) _networkTile(n),
+                  if (!_scanning && _problem != null) _problemCard(),
                   Center(
                     child: TextButton(
-                      onPressed: () {},
+                      onPressed: _addHidden,
                       child: const Text(
                         '+ Connect to Hidden Network...',
                         style: TextStyle(fontSize: 12),
@@ -190,7 +462,7 @@ class _WifiStepState extends State<WifiStep> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Password for ${_networks[_selected].name}',
+                    'Password for ${_current?.name ?? 'your network'}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,

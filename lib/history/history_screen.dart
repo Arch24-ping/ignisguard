@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
+import 'history_pdf.dart';
 import '../data/history_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
@@ -46,10 +48,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
-  void _soon(String what) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$what is not available in this prototype yet')),
-    );
+  Future<void> _savePdf() async {
+    try {
+      final bytes = await buildHistoryPdf(_data);
+      await Printing.sharePdf(bytes: bytes, filename: 'ignisguard-summary.pdf');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not create the PDF: $e')));
+    }
   }
 
   @override
@@ -222,7 +230,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         const SizedBox(width: 8),
         InkWell(
           customBorder: const CircleBorder(),
-          onTap: () => _soon('Sharing'),
+          onTap: () => _savePdf,
           child: Container(
             width: 38,
             height: 38,
@@ -607,7 +615,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           const SizedBox(height: 14),
           ElevatedButton.icon(
-            onPressed: () => _soon('PDF export'),
+            onPressed: () => _savePdf,
             icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
             label: const Text('Save Summary (PDF)'),
           ),
