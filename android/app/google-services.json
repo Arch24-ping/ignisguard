@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "462180707266",
+    "project_id": "ignisguard-4ce49",
+    "storage_bucket": "ignisguard-4ce49.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:462180707266:android:ccbbad2b09a590124ec45b",
+        "android_client_info": {
+          "package_name": "com.example.ignisguard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB7S6vBPQvycjDNoWleuo1dk6jPiW6x8SI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

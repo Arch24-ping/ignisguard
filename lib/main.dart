@@ -6,9 +6,14 @@ import 'data/settings_store.dart';
 import 'theme/app_theme.dart';
 import 'splash/splash_screen.dart';
 import 'data/sensor_link.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await SettingsStore.instance.load();
   await ProfileStore.instance.load();
