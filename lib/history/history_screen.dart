@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/screen_header.dart';
 import 'history_chart.dart';
+import '../data/temp_format.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -131,22 +132,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 badge: (d.temp.min >= 68 && d.temp.max <= 78)
                     ? 'Comfortable'
                     : 'Outside comfort zone',
-                big: '${d.temp.avg.round()}°F',
+                big: formatTemp(d.temp.avg),
                 unit: 'average',
                 detail:
-                    '• Ranged between ${d.temp.min.round()}°F and ${d.temp.max.round()}°F',
+                    '• Ranged between ${formatTemp(d.temp.min)} and ${formatTemp(d.temp.max)}',
                 chart: HistoryChart(
                   values: d.temp.values,
                   minY: 60,
                   maxY: 85,
                   bandLow: 68,
                   bandHigh: 78,
-                  bandLabel: 'Comfort zone (68°F – 78°F)',
+                  bandLabel: 'Comfort zone (20°C – 26°C)',
                   xLabels: d.xLabels,
                   color: const Color(0xFFE0894F),
                 ),
                 note: d.temp.max < 120
-                    ? 'Temperature stayed well below the 120°F alert level.'
+                    ? 'Temperature stayed well below the 49°C alert levell.'
                     : 'Temperature reached the alert level.',
               ),
               const SizedBox(height: 14),

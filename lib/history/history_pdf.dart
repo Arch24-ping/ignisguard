@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../data/history_data.dart';
+import '../data/temp_format.dart';
 
 final _orange = PdfColor.fromInt(0xFFC8602B);
 final _text = PdfColor.fromInt(0xFF2B211B);
@@ -185,12 +186,12 @@ Future<Uint8List> buildHistoryPdf(HistoryData d) async {
         _metric(
           title: 'Room Temperature',
           badge: (d.temp.min >= 68 && d.temp.max <= 78)
-              ? 'Within 68-78 F'
-              : 'Outside 68-78 F',
-          big: '${d.temp.avg.round()} F',
+              ? 'Within 20-26 °C'
+              : 'Outside 20-26 °C',
+          big: formatTemp(d.temp.avg),
           sub:
-              'average. Ranged between ${d.temp.min.round()} F and '
-              '${d.temp.max.round()} F',
+              'average. Ranged between ${formatTemp(d.temp.min)} and '
+              '${formatTemp(d.temp.max)}',
           chart: _chart(
             d.temp.values,
             60,

@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'sprinkler_card.dart';
 import 'trend_card.dart';
+import '../data/temp_format.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onOpenEducation});
@@ -55,11 +56,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _MetricCard(
                           label: 'Temp',
                           icon: Icons.thermostat,
-                          value: r.tempF.toStringAsFixed(0),
-                          unit: '°F',
+                          value: toC(r.tempF).toStringAsFixed(0),
+                          unit: '°C',
                           caption:
                               '${r.tempF >= SensorLink.tempLimitF ? 'High' : 'Normal'}'
-                              ' • Avg ${link.avgTemp.toStringAsFixed(0)}°',
+                              ' • Avg ${toC(link.avgTemp).toStringAsFixed(0)}°C',
                         ),
                       ),
                       const SizedBox(width: 10),

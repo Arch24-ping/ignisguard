@@ -4,6 +4,7 @@ import '../data/sensor_data.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../data/sensor_link.dart';
+import '../data/temp_format.dart';
 
 class TrendCard extends StatefulWidget {
   const TrendCard({super.key, required this.onHistory});
@@ -14,13 +15,31 @@ class TrendCard extends StatefulWidget {
 }
 
 class _TrendCardState extends State<TrendCard> {
-  int _selected = 3; // Thursday, as in the design
+  int? _selected; // null = follow today
+
+  static const _names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  int _todayIndex(List<DailyReading> week) {
+    final today = _names[DateTime.now().weekday - 1];
+    final i = week.indexWhere((d) => d.day == today);
+    return i >= 0 ? i : week.length - 1;
+  }
+
+  int _indexAt(double dx, double w, int count) {
+    final step = (w - TrendChartPainter.padX * 2) / (count - 1);
+    return ((dx - TrendChartPainter.padX) / step)
+        .round()
+        .clamp(0, count - 1)
+        .toInt();
+  }
 
   @override
   Widget build(BuildContext context) {
     final week = SensorLink.instance.week;
     if (week.isEmpty) return const SizedBox.shrink();
-    final day = week[_selected];
+    final sel = (_selected ?? _todayIndex(week))
+        .clamp(0, week.length - 1)
+        .toInt();
+    final day = week[sel];
 
     return Card(
       child: Padding(
@@ -69,24 +88,17 @@ class _TrendCardState extends State<TrendCard> {
                 final w = constraints.maxWidth;
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapDown: (d) {
-                    final step =
-                        (w - TrendChartPainter.padX * 2) / (week.length - 1);
-                    final i =
-                        ((d.localPosition.dx - TrendChartPainter.padX) / step)
-                            .round()
-                            .clamp(0, week.length - 1)
-                            .toInt();
-                    setState(() => _selected = i);
-                  },
+                  onTapDown: (d) => setState(
+                    () => _selected = _indexAt(d.localPosition.dx, w, week.length),
+                  ),
+                  onHorizontalDragUpdate: (d) => setState(
+                    () => _selected = _indexAt(d.localPosition.dx, w, week.length),
+                  ),
                   child: SizedBox(
                     width: w,
                     height: 180,
                     child: CustomPaint(
-                      painter: TrendChartPainter(
-                        week: week,
-                        selected: _selected,
-                      ),
+                      painter: TrendChartPainter(week: week, selected: sel),
                     ),
                   ),
                 );
@@ -104,7 +116,7 @@ class _TrendCardState extends State<TrendCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${day.day} • ${day.tempF.toStringAsFixed(0)}°F • '
+                    '${day.day} • ${toC(day.tempF).toStringAsFixed(0)}°C • '
                     '${day.smokePpm.toStringAsFixed(2)} ppm',
                     style: const TextStyle(
                       fontSize: 12,
@@ -119,7 +131,7 @@ class _TrendCardState extends State<TrendCard> {
                       _legend(
                         AppColors.primary,
                         'Ambient Temp (avg '
-                        '${SensorLink.instance.avgTemp.toStringAsFixed(1)}°)',
+                        '${toC(SensorLink.instance.avgTemp).toStringAsFixed(1)}°C)',
                         dashed: false,
                       ),
                       _legend(
@@ -172,7 +184,7 @@ class TrendChartPainter extends CustomPainter {
   static const double padX = 14;
   static const double labelH = 24;
 
-  // Temperature scale 45–80 °F, smoke scale 0–0.3 ppm (each fills the height).
+  // Temperature scale 7–27 °C (stored internally in °F), smoke scale 0–0.3 ppm (each fills the height).
   double _yTemp(double v, double h) => h * (0.10 + 0.70 * (1 - (v - 45) / 35));
   double _ySmoke(double v, double h) => h * (0.10 + 0.80 * (1 - v / 0.3));
 

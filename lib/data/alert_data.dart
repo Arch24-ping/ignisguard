@@ -53,7 +53,7 @@ class AlertData {
       ),
       AlertItem(
         severity: AlertSeverity.warning,
-        title: 'Rapid Temp Rise (+8°F in 2m)',
+        title: 'Rapid Temp Rise (+4°C in 2m)',
         message: 'Kitchen ambient thermal gradient spike',
         time: ago(16),
         tag: 'Thermal Warning',
