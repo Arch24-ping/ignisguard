@@ -25,6 +25,6 @@ class _OnboardingGateState extends State<OnboardingGate> {
     }
     return CloudStore.instance.onboardingDone
         ? const MainShell()
-        : const OnboardingFlow();
+        : OnboardingFlow(onFinished: (_) => setState(() {}));
   }
 }

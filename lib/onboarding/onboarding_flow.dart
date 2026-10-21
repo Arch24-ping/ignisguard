@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 
-import '../shell/main_shell.dart';
 import 'confirm_step.dart';
 import 'wifi_step.dart';
 import 'zone_step.dart';
@@ -46,8 +45,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       done(_nickname);
       return;
     }
-    Navigator.of(context)
-        .pushReplacement(MaterialPageRoute(builder: (_) => const MainShell()));
   }
 
   @override

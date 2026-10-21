@@ -48,7 +48,8 @@ class _SplashScreenState extends State<SplashScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const Spacer(flex: 5),
+            const SizedBox(width: double.infinity),
+            const Spacer(),
             Container(
               width: 96,
               height: 96,
@@ -111,14 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
                 color: AppColors.textSecondary,
               ),
             ),
-            const Spacer(flex: 6),
-           
-            const SizedBox(height: 4),
-            const Text(
-              'Connected to Zone A Main Receiver',
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
+            const Spacer(),
           ],
         ),
       ),
