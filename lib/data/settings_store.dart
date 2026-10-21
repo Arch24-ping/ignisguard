@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'cloud_store.dart';
 
 enum Sensitivity { high, standard, low }
 
@@ -169,6 +170,7 @@ class SettingsStore extends ChangeNotifier {
 
   void _changed() {
     _save();
+    CloudStore.instance.push('settings', toMap());
     notifyListeners();
   }
 
@@ -225,5 +227,43 @@ class SettingsStore extends ChangeNotifier {
   void removeDevice(int index) {
     _devices.removeAt(index);
     _changed();
+  }
+
+    Map<String, dynamic> toMap() => {
+    'sensitivity': _sensitivity.index,
+    'thermalAlert': _thermalAlert,
+    'push': _push,
+    'soundBypass': _soundBypass,
+    'sms': _sms,
+    'contacts': _contacts.map((c) => c.toJson()).toList(),
+    'devices': _devices.map((d) => d.toJson()).toList(),
+  };
+
+  /// Replaces local values with the account's cloud copy (null = defaults).
+  void applyCloud(Map<String, dynamic>? m) {
+    _sensitivity = Sensitivity.standard;
+    _thermalAlert = false;
+    _push = false;
+    _soundBypass = false;
+    _sms = false;
+    _contacts.clear();
+    _devices.clear();
+    if (m != null) {
+      final s = m['sensitivity'];
+      if (s is int && s >= 0 && s < Sensitivity.values.length) {
+        _sensitivity = Sensitivity.values[s];
+      }
+      _thermalAlert = (m['thermalAlert'] ?? false) as bool;
+      _push = (m['push'] ?? false) as bool;
+      _soundBypass = (m['soundBypass'] ?? false) as bool;
+      _sms = (m['sms'] ?? false) as bool;
+      for (final e in (m['contacts'] ?? []) as List) {
+        _contacts.add(Contact.fromJson(Map<String, dynamic>.from(e as Map)));
+      }
+      for (final e in (m['devices'] ?? []) as List) {
+        _devices.add(DeviceInfo.fromJson(Map<String, dynamic>.from(e as Map)));
+      }
+    }
+    notifyListeners();
   }
 }

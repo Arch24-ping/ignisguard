@@ -141,12 +141,12 @@ class ConfirmStep extends StatelessWidget {
                     ],
                   ),
                   const Divider(height: 28, color: AppColors.border),
-                  _row('Assigned Zone', 'zone'),
+                  _row('Assigned Zone', zone),
                   _row('Device Name', nickname),
                   _row(
                     'Sprinkler Interlock',
                     'Not connected',
-                    valueColor: AppColors.success,
+                    valueColor: AppColors.textSecondary,
                   ),
                   _row(
                     'Battery & Signal',

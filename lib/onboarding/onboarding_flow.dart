@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'onboarding_gate.dart';
+
 import '../shell/main_shell.dart';
 import 'confirm_step.dart';
 import 'wifi_step.dart';
 import 'zone_step.dart';
+import '../data/cloud_store.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key, this.onFinished});
@@ -39,8 +39,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _enterDashboard() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(kOnboardingDoneKey, true);
+    CloudStore.instance.setOnboardingDone(true);
     if (!mounted) return;
     final done = widget.onFinished;
     if (done != null) {

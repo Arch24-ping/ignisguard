@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/screen_header.dart';
 import 'contact_dialog.dart';
+import '../auth/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -179,6 +180,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 10),
               _devicesCard(),
+              const SizedBox(height: 22),
+              _sectionHeader(Icons.person_outline, 'Account', 'SIGNED IN'),
+              const SizedBox(height: 10),
+              _accountCard(),
             ],
           ),
         ),
@@ -342,7 +347,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _toggleRow(
               icon: Icons.thermostat,
               title: 'Thermal Gradient Alert',
-              subtitle: 'Not active unti a sensor is connected',
+              subtitle: 'Not active until a sensor is connected',
               value: _store.thermalAlert,
               onChanged: _store.setThermalAlert,
             ),
@@ -423,14 +428,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             _toggleRow(
               title: 'Push Notifications',
-              subtitle: 'Not active unti a sensor is connected',
+              subtitle: 'Not active until a sensor is connected',
               value: _store.push,
               onChanged: _store.setPush,
             ),
             const SizedBox(height: 16),
             _toggleRow(
               title: 'Critical Sound Bypass',
-              subtitle: 'Not active unti a sensor is connected',
+              subtitle: 'Not active until a sensor is connected',
               value: _store.soundBypass,
               onChanged: _store.setSoundBypass,
               badge: Container(
@@ -452,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _toggleRow(
               title: 'SMS Emergency Broadcast',
-              subtitle: 'Not active unti a sensor is connected',
+              subtitle: 'Not active until a sensor is connected',
               value: _store.sms,
               onChanged: _store.setSms,
             ),
@@ -663,6 +668,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _accountCard() {
+    final email = AuthService.instance.user?.email ?? '';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Email',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    email,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: AuthService.instance.signOut,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: const Text('Sign out'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   // ---------- Registered devices ----------
 
   Widget _devicesCard() {

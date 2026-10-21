@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
-import '../onboarding/onboarding_gate.dart';
+import '../auth/auth_gate.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (_, _, _) => const OnboardingGate(),
+        pageBuilder: (_, _, _) => const AuthGate(),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
       ),
@@ -105,28 +105,14 @@ class _SplashScreenState extends State<SplashScreen>
             ),
             const SizedBox(height: 14),
             Text(
-              'Calibrating sensors...',
+              'Starting up...',
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: AppColors.textSecondary,
               ),
             ),
             const Spacer(flex: 6),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.shield_outlined, size: 14),
-                SizedBox(width: 6),
-                Text(
-                  'SECURE LINK ACTIVE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
+           
             const SizedBox(height: 4),
             const Text(
               'Connected to Zone A Main Receiver',

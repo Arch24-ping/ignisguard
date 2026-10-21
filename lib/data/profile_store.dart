@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'cloud_store.dart';
 
 enum HomeType {
   house('House'),
@@ -65,6 +66,27 @@ class ProfileStore extends ChangeNotifier {
     await p.setString('profile_phone', phone);
     await p.setInt('profile_home', homeType.index);
     await p.setInt('profile_people', household);
+    CloudStore.instance.push('profile', toMap());
+    notifyListeners();
+  }
+    Map<String, dynamic> toMap() => {
+    'name': name,
+    'country': country,
+    'city': city,
+    'phone': phone,
+    'homeType': homeType.index,
+    'household': household,
+  };
+
+  /// Replaces local values with the account's cloud copy (null = blank).
+  void applyCloud(Map<String, dynamic>? m) {
+    name = (m?['name'] ?? '') as String;
+    country = (m?['country'] ?? '') as String;
+    city = (m?['city'] ?? '') as String;
+    phone = (m?['phone'] ?? '') as String;
+    final h = (m?['homeType'] ?? 0) as int;
+    homeType = HomeType.values[h.clamp(0, HomeType.values.length - 1)];
+    household = ((m?['household'] ?? 1) as int).clamp(1, 20);
     notifyListeners();
   }
 }
