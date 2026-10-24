@@ -21,6 +21,72 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _sensor = SensorData.sensors.first;
 
+  Widget _liveDevice(SensorLink link) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.sensors_rounded, size: 20, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              link.deviceZone.isEmpty
+                  ? link.deviceName
+                  : '${link.deviceName} • ${link.deviceZone}',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _smokeCard(SensorReading r) {
+    final level = r.smokeLevel;
+    if (level != null) {
+      return _MetricCard(
+        label: 'Smoke',
+        icon: Icons.cloud_outlined,
+        value: level,
+        unit: '',
+        valueSize: 18,
+        caption: 'Level reported by sensor',
+      );
+    }
+    final ppm = r.smokePpm ?? 0;
+    return _MetricCard(
+      label: 'Smoke',
+      icon: Icons.cloud_outlined,
+      value: ppm.toStringAsFixed(2),
+      unit: 'ppm',
+      caption: ppm >= SensorLink.smokeLimit
+          ? 'Elevated (≥ 0.15)'
+          : 'Normal (< 0.15)',
+    );
+  }
+
+  Widget _historyPending() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Trends and history build up as your sensor keeps reporting. '
+        'Charts arrive in a later update.',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+    );
+  }
+
   void _comingLater(String what) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(what)));
   }
@@ -44,9 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (r == null)
                   _noSensorCard(link)
                 else ...[
-                  _demoBanner(link),
+                  _sourceBanner(link),
                   const SizedBox(height: 12),
-                  _sensorSelector(),
+                  link.isDemo ? _sensorSelector() : _liveDevice(link),
                   const SizedBox(height: 14),
                   _statusBanner(link, r),
                   const SizedBox(height: 14),
@@ -58,23 +124,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.thermostat,
                           value: toC(r.tempF).toStringAsFixed(0),
                           unit: '°C',
-                          caption:
-                              '${r.tempF >= SensorLink.tempLimitF ? 'High' : 'Normal'}'
-                              ' • Avg ${toC(link.avgTemp).toStringAsFixed(0)}°C',
+                          caption: link.isDemo
+                              ? '${r.tempF >= SensorLink.tempLimitF ? 'High' : 'Normal'}'
+                                    ' • Avg ${toC(link.avgTemp).toStringAsFixed(0)}°C'
+                              : (r.tempF >= SensorLink.tempLimitF
+                                    ? 'High'
+                                    : 'Normal'),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Expanded(
-                        child: _MetricCard(
-                          label: 'Smoke',
-                          icon: Icons.cloud_outlined,
-                          value: r.smokePpm.toStringAsFixed(2),
-                          unit: 'ppm',
-                          caption: r.smokePpm >= SensorLink.smokeLimit
-                              ? 'Elevated (≥ 0.15)'
-                              : 'Normal (< 0.15)',
-                        ),
-                      ),
+                      Expanded(child: _smokeCard(r)),
                       const SizedBox(width: 10),
                       Expanded(
                         child: _MetricCard(
@@ -90,15 +149,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  TrendCard(
-                    onHistory: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                  if (link.isDemo) ...[
+                    TrendCard(
+                      onHistory: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const HistoryScreen(),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 14),
+                    const SprinklerCard(),
+                  ] else
+                    _historyPending(),
                   const SizedBox(height: 14),
-                  const SprinklerCard(),
-                  const SizedBox(height: 14),
-                  _spatialView(),
+                  _spatialView(link),
                 ],
                 const SizedBox(height: 8),
                 Center(
@@ -162,6 +226,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _noSensorCard(SensorLink link) {
+    if (link.isPaired) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          '${link.deviceName} is paired. Waiting for its first reading.',
+          style: const TextStyle(fontSize: 13),
+        ),
+      );
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -203,7 +281,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _demoBanner(SensorLink link) {
+  Widget _sourceBanner(SensorLink link) {
+    final live = link.isLive;
+    final text = live
+        ? (link.isOnline
+              ? 'LIVE • Updated ${_ago(link.lastSeen)}'
+              : 'OFFLINE • Last seen ${_ago(link.lastSeen)}')
+        : 'DEMO DATA • Simulated readings, no sensor connected';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -213,23 +297,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.science_outlined,
+          Icon(
+            live
+                ? (link.isOnline ? Icons.sensors : Icons.sensors_off)
+                : Icons.science_outlined,
             size: 16,
             color: AppColors.primary,
           ),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
-              'DEMO DATA • Simulated readings, no sensor connected',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+              text,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
             ),
           ),
-          TextButton(
-            onPressed: link.stopDemo,
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-            child: const Text('Exit', style: TextStyle(fontSize: 11)),
-          ),
+          if (!live)
+            TextButton(
+              onPressed: link.stopDemo,
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              child: const Text('Exit', style: TextStyle(fontSize: 11)),
+            ),
         ],
       ),
     );
@@ -298,6 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _statusBanner(SensorLink link, SensorReading r) {
+    final health = r.health;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -312,9 +400,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(link.statusTitle, style: AppTheme.heading(size: 20)),
                 const SizedBox(height: 6),
-                const Text(
-                  'Based on simulated demo readings.',
-                  style: TextStyle(
+                Text(
+                  link.isDemo
+                      ? 'Based on simulated demo readings.'
+                      : 'From your sensor, updated ${_ago(link.lastSeen)}.',
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -322,37 +412,39 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Positioned.fill(
-                  child: CircularProgressIndicator(
-                    value: r.health / 100,
-                    strokeWidth: 5,
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.border,
+          if (health != null) ...[
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 60,
+              height: 60,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(
+                    child: CircularProgressIndicator(
+                      value: health / 100,
+                      strokeWidth: 5,
+                      color: AppColors.primary,
+                      backgroundColor: AppColors.border,
+                    ),
                   ),
-                ),
-                Text(
-                  '${r.health}%',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                  Text(
+                    '$health%',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _spatialView() {
+  Widget _spatialView(SensorLink link) {
     final location = ProfileStore.instance.location;
     return Container(
       height: 130,
@@ -380,10 +472,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(_sensor, style: AppTheme.heading(size: 20, color: Colors.white)),
+          Text(
+            link.isLive ? link.deviceName : _sensor,
+            style: AppTheme.heading(size: 20, color: Colors.white),
+          ),
           const SizedBox(height: 2),
           Text(
-            location.isEmpty ? 'Demo sensor' : location,
+            link.isLive
+                ? (link.deviceZone.isEmpty ? location : link.deviceZone)
+                : (location.isEmpty ? 'Demo sensor' : location),
             style: const TextStyle(fontSize: 11, color: Colors.white),
           ),
         ],
@@ -399,6 +496,7 @@ class _MetricCard extends StatelessWidget {
     required this.value,
     required this.unit,
     required this.caption,
+    this.valueSize = 28,
   });
 
   final String label;
@@ -406,6 +504,7 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final String unit;
   final String caption;
+  final double valueSize;
 
   @override
   Widget build(BuildContext context) {
@@ -433,7 +532,7 @@ class _MetricCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(value, style: AppTheme.heading(size: 28)),
+                Text(value, style: AppTheme.heading(size: valueSize)),
                 const SizedBox(width: 2),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
@@ -460,4 +559,13 @@ class _MetricCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _ago(DateTime? t) {
+  if (t == null) return 'unknown';
+  final d = DateTime.now().difference(t);
+  if (d.inSeconds < 90) return 'just now';
+  if (d.inMinutes < 60) return '${d.inMinutes} min ago';
+  if (d.inHours < 24) return '${d.inHours} h ago';
+  return '${d.inDays} d ago';
 }

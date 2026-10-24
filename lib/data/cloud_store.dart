@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'profile_store.dart';
 import 'settings_store.dart';
+import 'sensor_link.dart';
 
 /// Keeps the signed-in user's data in Firestore at users/{uid}.
 class CloudStore {
@@ -32,6 +33,7 @@ class CloudStore {
     SettingsStore.instance.applyCloud(
       data?['settings'] as Map<String, dynamic>?,
     );
+    SensorLink.instance.attachLive(uid);
   }
 
   /// Call after sign-out so the next account never sees this one's data.
@@ -40,6 +42,8 @@ class CloudStore {
     onboardingDone = false;
     ProfileStore.instance.applyCloud(null);
     SettingsStore.instance.applyCloud(null);
+    SensorLink.instance.detachLive();
+    SensorLink.instance.stopDemo();
   }
 
   void push(String field, Map<String, dynamic> value) {
