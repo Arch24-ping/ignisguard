@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../widgets/screen_header.dart';
 import '../data/sensor_link.dart';
+import '../data/live_alerts.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({
@@ -26,9 +27,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
   AlertSeverity? _filter; // null means "All Alerts"
   bool _snoozed = false;
 
-  bool _wasDemo = SensorLink.instance.isDemo;
+  final Set<String> _reviewedIds = {};
+  List<LiveAlert> _liveCache = const [];
+  Stream<List<LiveAlert>>? _liveStream;
+  String? _liveStreamId;
   List<AlertItem> get _active =>
-      SensorLink.instance.isDemo ? _alerts : const <AlertItem>[];
+  SensorLink.instance.isDemo ? _alerts : const <AlertItem>[];
 
   @override
   void initState() {
@@ -43,13 +47,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     super.dispose();
   }
 
-  void _onLink() {
-    final demo = SensorLink.instance.isDemo;
-    if (demo != _wasDemo) setState(() => _wasDemo = demo);
+    void _onLink() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadReviewed() async {
     final prefs = await SharedPreferences.getInstance();
+    _reviewedIds.addAll(prefs.getStringList('reviewed_live_alerts') ?? const []);
     final reviewed = prefs.getStringList('reviewed_alerts') ?? const [];
     if (reviewed.isEmpty || !mounted) return;
     setState(() {
@@ -76,6 +80,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
       );
 
   void _markReviewed() {
+        if (SensorLink.instance.isLive) {
+      setState(() => _reviewedIds.addAll(_liveCache.map((a) => a.id)));
+      SharedPreferences.getInstance().then(
+        (p) => p.setStringList('reviewed_live_alerts', _reviewedIds.toList()),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All alerts marked as reviewed')),
+      );
+      return;
+    }
     if (_active.isEmpty) return;
     setState(() {
       for (final a in _alerts) {
@@ -100,6 +114,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (SensorLink.instance.isLive) {
+    return _liveBuild();
+  }
     final visible = _filter == null
         ? _active
         : _active.where((a) => a.severity == _filter).toList();
@@ -191,6 +208,248 @@ class _AlertsScreenState extends State<AlertsScreen> {
             _safetyCard(),
           ],
         ),
+      ),
+    );
+  }
+
+    AlertSeverity _sev(String s) => switch (s) {
+    'critical' => AlertSeverity.critical,
+    'warning' => AlertSeverity.warning,
+    _ => AlertSeverity.system,
+  };
+
+  Stream<List<LiveAlert>> _streamFor(String id) {
+    if (_liveStreamId != id || _liveStream == null) {
+      _liveStreamId = id;
+      _liveStream = liveAlertsStream(id);
+    }
+    return _liveStream!;
+  }
+
+  String _ago(DateTime? t) {
+    if (t == null) return '';
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 1) return 'Just now';
+    if (d.inMinutes < 60) return '${d.inMinutes} min ago';
+    if (d.inHours < 24) return '${d.inHours} h ago';
+    return '${d.inDays} d ago';
+  }
+
+  Widget _liveBuild() {
+    final id = SensorLink.instance.deviceId!;
+    return SafeArea(
+      child: StreamBuilder<List<LiveAlert>>(
+        stream: _streamFor(id),
+        builder: (context, snap) {
+          final all = snap.data ?? const <LiveAlert>[];
+          _liveCache = all;
+          final shown = _filter == null
+              ? all
+              : all.where((a) => _sev(a.severity) == _filter).toList();
+          int count(AlertSeverity s) => all
+              .where((a) => _sev(a.severity) == s && !_reviewedIds.contains(a.id))
+              .length;
+
+          Widget body;
+          if (snap.hasError) {
+            body = Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Text(
+                'Could not load alerts: ${snap.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            );
+          } else if (snap.connectionState == ConnectionState.waiting) {
+            body = const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          } else if (shown.isEmpty) {
+            body = const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  'No alerts. Your sensor is connected and has not reported any.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+            );
+          } else {
+            body = Column(children: [for (final a in shown) _liveTile(a)]);
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const ScreenHeader(title: 'Alerts'),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Alerts & Incidents',
+                        style: AppTheme.heading(size: 26),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _markReviewed,
+                      icon: const Icon(Icons.done_all, size: 16),
+                      label: const Text(
+                        'Mark reviewed',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        backgroundColor: AppColors.surface,
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Live from ${SensorLink.instance.deviceName}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _chip('All Alerts', null),
+                      _chip(
+                        'Critical',
+                        AlertSeverity.critical,
+                        count: count(AlertSeverity.critical),
+                        badge: AppColors.critical,
+                      ),
+                      _chip(
+                        'Warnings',
+                        AlertSeverity.warning,
+                        count: count(AlertSeverity.warning),
+                        badge: AppColors.primary,
+                      ),
+                      _chip('System', AlertSeverity.system),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                body,
+                const SizedBox(height: 8),
+                _safetyCard(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _liveTile(LiveAlert a) {
+    final sev = _sev(a.severity);
+    final color = switch (sev) {
+      AlertSeverity.critical => AppColors.critical,
+      AlertSeverity.warning => AppColors.primary,
+      AlertSeverity.system => AppColors.textSecondary,
+    };
+    final icon = switch (sev) {
+      AlertSeverity.critical => Icons.local_fire_department,
+      AlertSeverity.warning => Icons.warning_amber_rounded,
+      AlertSeverity.system => Icons.info_outline,
+    };
+    final needsAction =
+        sev == AlertSeverity.critical && !_reviewedIds.contains(a.id);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        a.title,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _ago(a.at),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  a.message,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (needsAction) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.criticalSoft,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      '! ACTION REQUIRED',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.critical,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

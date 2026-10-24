@@ -50,24 +50,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _smokeCard(SensorReading r) {
     final level = r.smokeLevel;
     if (level != null) {
+      final high = level == 'High';
+      final elevated = level == 'Elevated';
       return _MetricCard(
         label: 'Smoke',
         icon: Icons.cloud_outlined,
         value: level,
         unit: '',
         valueSize: 18,
-        caption: 'Level reported by sensor',
+        accent: high
+            ? AppColors.critical
+            : (elevated ? AppColors.primary : null),
+        caption: high
+            ? 'Smoke detected'
+            : (elevated ? 'Elevated' : 'Level reported by sensor'),
       );
     }
     final ppm = r.smokePpm ?? 0;
+    final over = ppm >= SensorLink.smokeLimit;
     return _MetricCard(
       label: 'Smoke',
       icon: Icons.cloud_outlined,
       value: ppm.toStringAsFixed(2),
       unit: 'ppm',
-      caption: ppm >= SensorLink.smokeLimit
-          ? 'Elevated (≥ 0.15)'
-          : 'Normal (< 0.15)',
+      accent: over ? AppColors.critical : null,
+      caption: over ? 'Elevated (≥ 0.15)' : 'Normal (< 0.15)',
     );
   }
 
@@ -123,6 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           label: 'Temp',
                           icon: Icons.thermostat,
                           value: toC(r.tempF).toStringAsFixed(0),
+                          accent: r.tempF >= SensorLink.tempLimitF
+                              ? AppColors.critical
+                              : null,
                           unit: '°C',
                           caption: link.isDemo
                               ? '${r.tempF >= SensorLink.tempLimitF ? 'High' : 'Normal'}'
@@ -386,24 +396,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _statusBanner(SensorLink link, SensorReading r) {
     final health = r.health;
+    final alarm = link.isAlarm;
+    final warn = link.isWarning;
+    final offline = link.isLive && !link.isOnline;
+
+    final bg = alarm
+        ? AppColors.criticalSoft
+        : warn
+        ? AppColors.primary.withValues(alpha: 0.12)
+        : AppColors.surfaceMuted;
+    final titleColor = alarm
+        ? AppColors.critical
+        : (offline ? AppColors.textSecondary : AppColors.textPrimary);
+    final iconColor = alarm
+        ? AppColors.critical
+        : (offline ? AppColors.textSecondary : AppColors.primary);
+    final icon = alarm
+        ? Icons.local_fire_department
+        : warn
+        ? Icons.warning_amber_rounded
+        : offline
+        ? Icons.sensors_off
+        : Icons.check_circle_outline;
+
+    final subtitle = link.isDemo
+        ? 'Based on simulated demo readings.'
+        : offline
+        ? 'Last report ${_ago(link.lastSeen)}. The readings below may be out of date.'
+        : 'From your sensor, updated ${_ago(link.lastSeen)}.';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
+        color: bg,
         borderRadius: BorderRadius.circular(20),
+        border: alarm
+            ? Border.all(color: AppColors.critical, width: 1.5)
+            : null,
       ),
       child: Row(
         children: [
+          Icon(icon, size: 28, color: iconColor),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(link.statusTitle, style: AppTheme.heading(size: 20)),
+                Text(
+                  link.statusTitle,
+                  style: AppTheme.heading(size: 20, color: titleColor),
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  link.isDemo
-                      ? 'Based on simulated demo readings.'
-                      : 'From your sensor, updated ${_ago(link.lastSeen)}.',
+                  subtitle,
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -497,6 +542,7 @@ class _MetricCard extends StatelessWidget {
     required this.unit,
     required this.caption,
     this.valueSize = 28,
+    this.accent,
   });
 
   final String label;
@@ -505,6 +551,7 @@ class _MetricCard extends StatelessWidget {
   final String unit;
   final String caption;
   final double valueSize;
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
@@ -532,7 +579,12 @@ class _MetricCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(value, style: AppTheme.heading(size: valueSize)),
+                Text(
+                  value,
+                  style: accent == null
+                      ? AppTheme.heading(size: valueSize)
+                      : AppTheme.heading(size: valueSize, color: accent!),
+                ),
                 const SizedBox(width: 2),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
@@ -549,9 +601,9 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               caption,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 9,
-                color: AppColors.textSecondary,
+                color: accent ?? AppColors.textSecondary,
               ),
             ),
           ],

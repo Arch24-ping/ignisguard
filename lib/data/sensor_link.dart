@@ -73,6 +73,9 @@ class SensorLink extends ChangeNotifier {
 
   String get deviceName => _deviceName;
   String get deviceZone => _deviceZone;
+  String? get deviceId => _deviceId;
+  bool get isAlarm => isLive && isOnline && _deviceStatus == 'alarm';
+  bool get isWarning => isLive && isOnline && _deviceStatus == 'warning';
   DateTime? get lastSeen => _lastSeen ?? _liveReading?.at;
   bool get isOnline {
     final t = lastSeen;
