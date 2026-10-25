@@ -43,7 +43,7 @@ class SensorLink extends ChangeNotifier {
 
   static const _modeKey = 'sensor_mode';
   static const double smokeLimit = 0.15;
-  static const double tempLimitF = 131;
+  static const double tempLimitF = 130;
   static const Duration offlineAfter = Duration(minutes: 3);
 
   // Demo

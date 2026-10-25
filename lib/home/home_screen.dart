@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 14),
                     const SprinklerCard(),
                   ] else ...[
-                    const SprinklerControl(),
+                     SprinklerControl(),
                     const SizedBox(height: 14),
                     _historyPending(),
                   ],
