@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import 'sprinkler_card.dart';
 import 'trend_card.dart';
 import '../data/temp_format.dart';
+import 'sprinkler_control.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onOpenEducation});
@@ -169,8 +170,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 14),
                     const SprinklerCard(),
-                  ] else
+                  ] else ...[
+                    const SprinklerControl(),
+                    const SizedBox(height: 14),
                     _historyPending(),
+                  ],
                   const SizedBox(height: 14),
                   _spatialView(link),
                 ],
