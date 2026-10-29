@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'sensor_data.dart';
+import 'sim_sensor.dart';
 
 enum SensorMode { none, demo, live }
 
@@ -59,6 +60,7 @@ class SensorLink extends ChangeNotifier {
   String _deviceName = '';
   String _deviceZone = '';
   String _deviceStatus = 'ok';
+  bool _simulated = false;
   DateTime? _lastSeen;
   SensorReading? _liveReading;
 
@@ -70,8 +72,10 @@ class SensorLink extends ChangeNotifier {
   SensorReading? get reading =>
       isLive ? _liveReading : (_demoOn ? _demoReading : null);
   bool get hasSensor => reading != null;
+  
 
   String get deviceName => _deviceName;
+  bool get isSimulated => isLive && _simulated;
   String get deviceZone => _deviceZone;
   String? get deviceId => _deviceId;
   bool get isAlarm => isLive && isOnline && _deviceStatus == 'alarm';
@@ -145,6 +149,8 @@ class SensorLink extends ChangeNotifier {
     _deviceStatus = 'ok';
     _lastSeen = null;
     _liveReading = null;
+    _simulated = false;
+   SimSensor.instance.detach();
   }
 
   void _onDevices(QuerySnapshot<Map<String, dynamic>> snap) {
@@ -160,6 +166,12 @@ class SensorLink extends ChangeNotifier {
         _deviceStatus = (d['status'] ?? 'ok') as String;
         _lastSeen = _time(d['lastSeen']);
         _liveReading = _parse(d['latest']);
+        _simulated = d['simulated'] == true;
+        if (_simulated) {
+          SimSensor.instance.attach(doc.id, d['pumpCmd'] as String?);
+        } else {
+           SimSensor.instance.detach();
+        }
       }
     } catch (e) {
       debugPrint('Bad device document: $e');

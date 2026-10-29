@@ -7,9 +7,10 @@ import 'package:flutter/services.dart';
 import 'data/profile_store.dart';
 import 'data/sensor_link.dart';
 import 'data/settings_store.dart';
-import 'firebase_options.dart';
 import 'splash/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'firebase_options_web.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,9 +49,9 @@ class _BootState extends State<_Boot> {
     });
     try {
       await _do('Firebase', () async {
-        await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform,
-        );
+        await (kIsWeb
+        ? Firebase.initializeApp(options: webFirebaseOptions)
+        : Firebase.initializeApp());
       });
       await _do('Screen orientation', () async {
         await SystemChrome.setPreferredOrientations(

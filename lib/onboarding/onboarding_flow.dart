@@ -5,6 +5,11 @@ import 'confirm_step.dart';
 import 'wifi_step.dart';
 import 'zone_step.dart';
 import '../data/cloud_store.dart';
+import 'dart:async';
+
+import '../data/sim_sensor.dart';
+import '../data/welcome_mailer.dart';
+import '../data/profile_store.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key, this.onFinished});
@@ -37,8 +42,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  Future<void> _enterDashboard() async {
+    Future<void> _enterDashboard() async {
     CloudStore.instance.setOnboardingDone(true);
+
+    // Give this account its own simulated sensor, named and placed the way
+    // the user chose, so Home is LIVE the moment they land on it.
+    await SimSensor.createFor(name: _nickname, zone: _zone);
+
+    // Welcome email: fire and forget, never blocks setup.
+    unawaited(WelcomeMailer.send(ProfileStore.instance.firstName));
+
     if (!mounted) return;
     final done = widget.onFinished;
     if (done != null) {

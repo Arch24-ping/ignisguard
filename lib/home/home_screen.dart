@@ -10,6 +10,7 @@ import 'sprinkler_card.dart';
 import 'trend_card.dart';
 import '../data/temp_format.dart';
 import 'sprinkler_control.dart';
+import 'sim_panel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onOpenEducation});
@@ -171,7 +172,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 14),
                     const SprinklerCard(),
                   ] else ...[
-                     SprinklerControl(),
+                    if (link.isSimulated) ...[
+                      const SimPanel(),
+                      const SizedBox(height: 14),
+                    ],
+                    SprinklerControl(),
                     const SizedBox(height: 14),
                     _historyPending(),
                   ],
@@ -299,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final live = link.isLive;
     final text = live
         ? (link.isOnline
-              ? 'LIVE • Updated ${_ago(link.lastSeen)}'
+              ? 'LIVE${link.isSimulated ? ' (SIMULATED)' : ''} • Updated ${_ago(link.lastSeen)}'
               : 'OFFLINE • Last seen ${_ago(link.lastSeen)}')
         : 'DEMO DATA • Simulated readings, no sensor connected';
     return Container(
