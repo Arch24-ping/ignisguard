@@ -5,7 +5,12 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import 'onboarding_widgets.dart';
 import 'wifi_scanner.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
+
+/// Off while the sensor is simulated: nothing is joined, verified or saved.
+/// Turn on when a real sensor can receive the Wi-Fi details.
+const bool _realProvisioning = false;
 class _Net {
   const _Net(
     this.name,
@@ -56,7 +61,11 @@ class _WifiStepState extends State<WifiStep> {
   @override
   void initState() {
     super.initState();
-    _scan();
+    if (kIsWeb) {
+      _problem = 'Wi-Fi scanning is not available in a web browser.';
+    } else {
+      _scan();
+    }
   }
 
   @override
@@ -159,6 +168,14 @@ class _WifiStepState extends State<WifiStep> {
   }
 
   Future<void> _connect() async {
+    if (!_realProvisioning) {
+      setState(() => _connecting = true);
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      setState(() => _connecting = false);
+      widget.onContinue(_current?.name ?? 'Wi-Fi');
+      return;
+    }
     final net = _current;
     if (net == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -358,8 +375,8 @@ class _WifiStepState extends State<WifiStep> {
           Text('Connect to Wi-Fi', style: AppTheme.heading(size: 30)),
           const SizedBox(height: 8),
           const Text(
-            'Connect your IgnisGuard sensor to your 2.4 GHz home Wi-Fi '
-            'network so it can send instant fire alerts.',
+            'Your simulated sensor does not need Wi-Fi details. When a physical '
+            'sensor is paired later, this is where its network is set.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
