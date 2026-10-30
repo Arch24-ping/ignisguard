@@ -84,7 +84,7 @@ class ConfirmStep extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'SETUP SAVED • SENSOR NOT YET CONNECTED',
+          'SETUP SAVED • SIMULATED SENSOR READY',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 9,
@@ -101,8 +101,9 @@ class ConfirmStep extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Your Wi-Fi and zone details are saved on this phone. Live readings '
-            'and alerts appear once a real sensor connects.',
+            'Your zone and device name are saved to your account. Your account '
+            'comes with a simulated sensor, so you can try live readings, '
+            'alerts and sprinkler control. A physical sensor can be paired later.',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 13,
@@ -142,15 +143,14 @@ class ConfirmStep extends StatelessWidget {
                   ),
                   const Divider(height: 28, color: AppColors.border),
                   _row('Assigned Zone', zone),
-                  _row('Device Name', nickname),
-                  _row(
+                                    _row(
                     'Sprinkler Interlock',
-                    'Not connected',
+                    'Simulated',
                     valueColor: AppColors.textSecondary,
                   ),
                   _row(
                     'Battery & Signal',
-                    'Shown once the sensor reports in',
+                    'Shown once a physical sensor reports in',
                     valueColor: AppColors.textSecondary,
                   ),
                 ],
@@ -173,12 +173,12 @@ class ConfirmStep extends StatelessWidget {
           TextButton.icon(
             onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('No sensor connected. Nothing was sent'),
+                content: Text('No physical siren connected. Nothing was sent'),
               ),
             ),
             icon: const Icon(Icons.volume_up_outlined, size: 16),
             label: const Text(
-              'Test Siren (needs a connected sensor)',
+              'Test Siren (needs a physical sensor)',
               style: TextStyle(fontSize: 11),
             ),
           ),
